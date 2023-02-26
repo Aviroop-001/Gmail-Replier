@@ -6,6 +6,7 @@ require("dotenv").config();
 
 const app = express();
 
+// Auth details
 const oAuth2Client = new OAuth2(
   process.env.CLIENT_ID,
   process.env.CLIENT_SECRET,
@@ -16,9 +17,9 @@ oAuth2Client.setCredentials({
 });
 
 const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
-// let timestamp = new Date().getTime()-10000;
 
 const checkForNewMessages = () => {
+    //get message details
   gmail.users.messages.list(
     {
       userId: "me",
@@ -32,6 +33,7 @@ const checkForNewMessages = () => {
       if (messages?.length) {
         console.log("New message received!");
 
+        //checking if message unread
         for (const message of messages) {
           const messageDetails = await gmail.users.messages.get({
             userId: "me",
@@ -102,10 +104,6 @@ const checkForNewMessages = () => {
               }
             });
 
-            // TODO: If a response is required, use the `nodemailer` package to send an automatic response.
-
-            // Update the timestamp to the current time, so we only check for new messages that arrive after this point.
-            // timestamp = new Date().getTime();
           } else {
             console.log(
               `Email thread with thread ID ${threadId} already has a reply from you.`
@@ -119,6 +117,7 @@ const checkForNewMessages = () => {
   );
 };
 
+//interval of the function call
 setInterval(checkForNewMessages, 50000);
 
 app.get("/", async (req, res) => {
