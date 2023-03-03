@@ -90,7 +90,7 @@ const checkForNewMessages = () => {
               text: "Thank you for your message. I will respond as soon as I am available",
             };
 
-            transporter.sendMail(mailOptions, (err, info) => {
+            transporter.sendMail(mailOptions, async (err, info) => {
               if (err) {
                 console.log(err);
               } else {
@@ -101,6 +101,26 @@ const checkForNewMessages = () => {
                     ).value
                   }: ${info.response}`
                 );
+                // const labels = await gmail.users.labels.list({
+                //   userId: "me",
+                // });
+                // labels.data.labels.forEach((label) => {
+                //   console.log(label.name, label.id);
+                // });
+                gmail.users.threads
+                  .modify({
+                    userId: "me",
+                    id: threadId,
+                    resource: {
+                      addLabelIds: ["Label_7265734220478350504"],
+                    },
+                  })
+                  .then((res) => {
+                    console.log(`"Replied" label added`, res);
+                  })
+                  .catch((err) => {
+                    console.log("couldn't add label", err);
+                  });
               }
             });
 
@@ -118,7 +138,7 @@ const checkForNewMessages = () => {
 };
 
 //interval of the function call
-setInterval(checkForNewMessages, 50000);
+setInterval(checkForNewMessages, 10000);
 
 app.get("/", async (req, res) => {
   res.send("Gmail Replier");
