@@ -1,6 +1,10 @@
 const express = require("express");
-const { google } = require("googleapis");
-const { OAuth2 } = google.auth;
+const {
+  google
+} = require("googleapis");
+const {
+  OAuth2
+} = google.auth;
 const nodemailer = require("nodemailer");
 require("dotenv").config();
 
@@ -16,12 +20,14 @@ oAuth2Client.setCredentials({
   refresh_token: process.env.REFRESH_TOKEN,
 });
 
-const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
+const gmail = google.gmail({
+  version: "v1",
+  auth: oAuth2Client
+});
 
 const checkForNewMessages = () => {
-    //get message details
-  gmail.users.messages.list(
-    {
+  //get message details
+  gmail.users.messages.list({
       userId: "me",
       q: `is:unread`,
     },
@@ -48,12 +54,12 @@ const checkForNewMessages = () => {
           if (
             !threadDetails.data.messages.some(
               (msg) =>
-                msg.labelIds.includes("SENT") &&
-                msg.payload.headers.find(
-                  (header) =>
-                    header.name === "From" &&
-                    header.value.includes("banerjeeaviroop01@gmail.com")
-                )
+              msg.labelIds.includes("SENT") &&
+              msg.payload.headers.find(
+                (header) =>
+                header.name === "From" &&
+                header.value.includes("banerjeeaviroop01@gmail.com")
+              )
             )
           ) {
             console.log(
@@ -82,8 +88,7 @@ const checkForNewMessages = () => {
               to: messageDetails.data.payload.headers.find(
                 (header) => header.name === "From"
               ).value,
-              subject:
-                "Re: " +
+              subject: "Re: " +
                 messageDetails.data.payload.headers.find(
                   (header) => header.name === "Subject"
                 ).value,
@@ -107,20 +112,105 @@ const checkForNewMessages = () => {
                 // labels.data.labels.forEach((label) => {
                 //   console.log(label.name, label.id);
                 // });
-                gmail.users.threads
-                  .modify({
+                const labelName = "Replied";
+
+                // Check if label exists
+                let label = null;
+                let labels = [];
+                let labelFound = false
+                gmail.users.labels
+                  .list({
                     userId: "me",
-                    id: threadId,
-                    resource: {
-                      addLabelIds: ["Label_7265734220478350504"],
-                    },
                   })
                   .then((res) => {
-                    console.log(`"Replied" label added`, res);
+                    console.log("LABELS FETCHED");
+                    labels = res.data.labels;
+                    labels.forEach((l) => {
+                      if (l.name === labelName){
+                        console.log(`"${labelName}" label already exists`);
+                        label=l;
+                        labelFound = true;
+                      }
+                    });
+                    if (!labelFound) {
+                      gmail.users.labels.create({
+                        userId: "me",
+                        requestBody: {
+                          name: labelName,
+                          labelListVisibility: "labelShow",
+                          messageListVisibility: "show",
+                        },
+                      }).then(res => {
+                        console.log(`"${labelName}" label created`, res);
+                        gmail.users.threads.modify({
+                            userId: "me",
+                            id: threadId,
+                            resource: {
+                              addLabelIds: [label.id],
+                            },
+                          })
+                          .then((res) => {
+                            console.log(`"Replied" label added`, res);
+                          })
+                          .catch((err) => {
+                            console.log("couldn't add label", err);
+                          });
+                      }).catch(err => {
+                        console.log("CREATING LABEL ERROR", err);
+                      })
+                    } else {
+                      gmail.users.threads.modify({
+                          userId: "me",
+                          id: threadId,
+                          resource: {
+                            addLabelIds: [label.id],
+                          },
+                        })
+                        .then((res) => {
+                          console.log(`"Replied" label added`, res);
+                        })
+                        .catch((err) => {
+                          console.log("couldn't add label", err);
+                        });
+                    }
                   })
                   .catch((err) => {
-                    console.log("couldn't add label", err);
+                    console.log("ERROR WITH LABELS", err);
                   });
+                // const labels = await gmail.users.labels.list({ userId: "me" });
+                // for (const label of labels.data.labels) {
+                //   if (label.name === labelName) {
+                //     console.log(`"${labelName}" label already exists`);
+                //     break;
+                //   }
+                // }
+                // //create new label if it doesn't exist
+                // if (!label) {
+                //   label = await gmail.users.labels.create({
+                //     userId: "me",
+                //     requestBody: {
+                //       name: labelName,
+                //       labelListVisibility: "labelShow",
+                //       messageListVisibility: "show",
+                //     },
+                //   });
+                //   console.log(`"${labelName}" label created`);
+                // }
+
+                // gmail.users.threads
+                //   .modify({
+                //     userId: "me",
+                //     id: threadId,
+                //     resource: {
+                //       addLabelIds: [label.id],
+                //     },
+                //   })
+                //   .then((res) => {
+                //     console.log(`"Replied" label added`, res);
+                //   })
+                //   .catch((err) => {
+                //     console.log("couldn't add label", err);
+                //   });
               }
             });
 
@@ -147,4 +237,3 @@ app.get("/", async (req, res) => {
 app.listen(process.env.PORT, () => {
   console.log("listening on port " + process.env.PORT);
 });
-
